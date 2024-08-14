@@ -21,6 +21,9 @@ struct GLContext
     GLuint transformSBOID;
     GLuint screenSizeID;
     GLuint orthoProjectionID;
+
+    long long textureTimestamp;
+    long long shaderTimestamp;
 };
 
 // #############################################################################
@@ -171,6 +174,24 @@ bool gl_init(BumpAllocator* transientStorage)
 
 void gl_render()
 {
+    // Texture hot reloading
+    {
+        long long currentTimestamp = get_timestamp(TEXTURE_PATH);
+
+        if (currentTimestamp > glContext.textureTimestamp)
+        {
+            glActiveTexture(GL_TEXTURE0);
+            int width, height, nChannels;
+            char* data = (char*)stbi_load(TEXTURE_PATH, &width, &height, &nChannels, 4);
+            if (data)
+            {
+                glContext.textureTimestamp = currentTimestamp;
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                stbi_image_free(data);
+            }
+        }
+    }
+
     glClearColor(119.0f / 255.0f, 33.0f / 255.0f, 111.0f / 255.0f, 1.0f);
     glClearDepth(0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
